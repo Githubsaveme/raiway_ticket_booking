@@ -1,134 +1,178 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:pdf/pdf.dart';
+import 'package:intl/intl.dart';
+import 'package:pdf/pdf.dart' as pw;
 import 'package:pdf/widgets.dart' as pw;
-import 'package:path_provider/path_provider.dart';
-import 'package:open_file/open_file.dart';
+import 'package:printing/printing.dart';
 
 void main() {
-  runApp(MaterialApp(
-    home: BookingScreen(),
-  ));
+  runApp(const TicketBookingApp());
 }
 
-class BookingScreen extends StatefulWidget {
-  @override
-  _BookingScreenState createState() => _BookingScreenState();
-}
-
-class _BookingScreenState extends State<BookingScreen> {
-  final _formKey = GlobalKey<FormState>();
-  String _name = '';
-  String _age = '';
-  String _destination = '';
-  String _date = '';
+class TicketBookingApp extends StatelessWidget {
+  const TicketBookingApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text('Railways Ticket Booking')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              TextFormField(
-                decoration: InputDecoration(labelText: 'Name'),
-                onSaved: (value) => _name = value ?? '',
-              ),
-              TextFormField(
-                decoration: InputDecoration(labelText: 'Age'),
-                onSaved: (value) => _age = value ?? '',
-              ),
-              TextFormField(
-                decoration: InputDecoration(labelText: 'Destination'),
-                onSaved: (value) => _destination = value ?? '',
-              ),
-              TextFormField(
-                decoration: InputDecoration(labelText: 'Date of Travel'),
-                onSaved: (value) => _date = value ?? '',
-              ),
-              SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () {
-                  if (_formKey.currentState?.validate() ?? false) {
-                    _formKey.currentState?.save();
-                    _generatePdfTicket(_name, _age, _destination, _date);
-                  }
-                },
-                child: Text('Book Ticket & Generate PDF'),
-              ),
-            ],
-          ),
-        ),
-      ),
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TicketBookingHome(),
     );
   }
+}
 
-  Future<void> _generatePdfTicket(
-      String name, String age, String destination, String date) async {
+class TicketBookingHome extends StatefulWidget {
+  const TicketBookingHome({super.key});
+
+  @override
+  _TicketBookingHomeState createState() => _TicketBookingHomeState();
+}
+
+class _TicketBookingHomeState extends State<TicketBookingHome> {
+  String? _selectedSource;
+  String? _selectedDestination;
+  DateTime _selectedDate = DateTime.now();
+
+  List<String> stations = [
+    'Delhi',
+    'Mumbai',
+    'Chennai',
+    'Kolkata',
+    'Hyderabad'
+  ];
+
+  // Method to pick a date
+  Future<void> _pickDate(BuildContext context) async {
+    final DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime.now(),
+      lastDate: DateTime(2025),
+    );
+    if (pickedDate != null && pickedDate != _selectedDate) {
+      setState(() {
+        _selectedDate = pickedDate;
+      });
+    }
+  }
+
+  // Generate PDF Method
+  Future<void> _generatePDF() async {
     final pdf = pw.Document();
 
-    // Define custom styles
-    final boldTextStyle =
-        pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold);
-    final regularTextStyle = pw.TextStyle(fontSize: 14);
-    final headerTextStyle = pw.TextStyle(
-        fontSize: 24, fontWeight: pw.FontWeight.bold, color: PdfColors.blue);
-    final footerTextStyle =
-        pw.TextStyle(fontSize: 10, fontStyle: pw.FontStyle.italic);
-
-    // Add a page with enhanced layout
     pdf.addPage(
       pw.Page(
+        pageFormat: pw.PdfPageFormat.a4,
         build: (pw.Context context) {
           return pw.Container(
-            padding: pw.EdgeInsets.all(16),
-            decoration: pw.BoxDecoration(
-              border: pw.Border.all(color: PdfColors.black),
-            ),
+            padding: const pw.EdgeInsets.all(20),
             child: pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
-                // Header section with Indian Railways title
-                pw.Center(
-                  child: pw.Text(
-                    'Indian Railways Ticket',
-                    style: headerTextStyle,
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text(
+                      "Indian Railways",
+                      style: pw.TextStyle(
+                        fontSize: 24,
+                        fontWeight: pw.FontWeight.bold,
+                        color: pw.PdfColors.blue900,
+                      ),
+                    ),
+                    pw.Text(
+                      "Ticket Confirmation",
+                      style: pw.TextStyle(
+                        fontSize: 18,
+                        fontWeight: pw.FontWeight.bold,
+                        color: pw.PdfColors.red800,
+                      ),
+                    ),
+                  ],
+                ),
+                pw.Divider(),
+                pw.SizedBox(height: 10),
+                pw.Text(
+                  "Ticket Details",
+                  style: pw.TextStyle(
+                    fontSize: 18,
+                    fontWeight: pw.FontWeight.bold,
+                    color: pw.PdfColors.blue800,
                   ),
                 ),
                 pw.SizedBox(height: 10),
-
-                // Passenger details in a table format
-                pw.Table(
-                  border: pw.TableBorder.all(width: 1, color: PdfColors.black),
-                  children: [
-                    _buildTableRow('Passenger Name', name, boldTextStyle,
-                        regularTextStyle),
-                    _buildTableRow('Age', age, boldTextStyle, regularTextStyle),
-                    _buildTableRow('Destination', destination, boldTextStyle,
-                        regularTextStyle),
-                    _buildTableRow('Date of Travel', date, boldTextStyle,
-                        regularTextStyle),
-                  ],
+                pw.Container(
+                  padding: const pw.EdgeInsets.all(10),
+                  decoration: pw.BoxDecoration(
+                    border:
+                        pw.Border.all(color: pw.PdfColors.blueGrey, width: 2),
+                    borderRadius: pw.BorderRadius.circular(8),
+                  ),
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text("From: $_selectedSource",
+                          style: const pw.TextStyle(fontSize: 16)),
+                      pw.Text("To: $_selectedDestination",
+                          style: const pw.TextStyle(fontSize: 16)),
+                      pw.Text(
+                        "Date of Journey: ${DateFormat.yMMMd().format(_selectedDate)}",
+                        style: const pw.TextStyle(fontSize: 16),
+                      ),
+                      pw.Text("Train: Rajdhani Express",
+                          style: const pw.TextStyle(fontSize: 16)),
+                      pw.Text("Seat: A12, Class: 1A",
+                          style: const pw.TextStyle(fontSize: 16)),
+                      pw.Text("PNR: 1234567890",
+                          style: const pw.TextStyle(fontSize: 16)),
+                    ],
+                  ),
                 ),
                 pw.SizedBox(height: 20),
-
-                // Ticket terms and conditions or any additional information
                 pw.Text(
-                  'Thank you for booking with Indian Railways! Please make sure to arrive at least 30 minutes before the departure time.',
-                  style: regularTextStyle,
-                  textAlign: pw.TextAlign.justify,
+                  "Passenger Information",
+                  style: pw.TextStyle(
+                    fontSize: 18,
+                    fontWeight: pw.FontWeight.bold,
+                    color: pw.PdfColors.blue800,
+                  ),
+                ),
+                pw.SizedBox(height: 10),
+                pw.Container(
+                  padding: const pw.EdgeInsets.all(10),
+                  decoration: pw.BoxDecoration(
+                    border:
+                        pw.Border.all(color: pw.PdfColors.blueGrey, width: 2),
+                    borderRadius: pw.BorderRadius.circular(8),
+                  ),
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text("Passenger Name: John Doe",
+                          style: const pw.TextStyle(fontSize: 16)),
+                      pw.Text("Age: 28",
+                          style: const pw.TextStyle(fontSize: 16)),
+                      pw.Text("Gender: Male",
+                          style: const pw.TextStyle(fontSize: 16)),
+                      pw.Text("Contact: +91 9876543210",
+                          style: const pw.TextStyle(fontSize: 16)),
+                    ],
+                  ),
                 ),
                 pw.SizedBox(height: 20),
-
-                // Footer
-                pw.Divider(),
-                pw.Center(
-                  child: pw.Text(
-                    'Safe travels with Indian Railways!',
-                    style: footerTextStyle,
+                pw.Text(
+                  "Thank you for choosing Indian Railways!",
+                  style: pw.TextStyle(
+                    fontSize: 16,
+                    fontWeight: pw.FontWeight.bold,
+                    color: pw.PdfColors.green800,
+                  ),
+                ),
+                pw.SizedBox(height: 10),
+                pw.Text(
+                  "We wish you a pleasant journey.",
+                  style: const pw.TextStyle(
+                    fontSize: 14,
+                    color: pw.PdfColors.black,
                   ),
                 ),
               ],
@@ -138,33 +182,136 @@ class _BookingScreenState extends State<BookingScreen> {
       ),
     );
 
-    // Save PDF to a file
-    final output = await getTemporaryDirectory();
-    final file = File("${output.path}/railways_ticket.pdf");
-
-    await file.writeAsBytes(await pdf.save());
-
-    // Open the generated PDF
-    await OpenFile.open(file.path);
+    await Printing.layoutPdf(
+        onLayout: (pw.PdfPageFormat format) async => pdf.save());
   }
 
-  pw.TableRow _buildTableRow(
-    String title,
-    String value,
-    pw.TextStyle titleStyle,
-    pw.TextStyle valueStyle,
-  ) {
-    return pw.TableRow(
-      children: [
-        pw.Padding(
-          padding: pw.EdgeInsets.all(8),
-          child: pw.Text(title, style: titleStyle),
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Railway Ticket Booking",
+            style: TextStyle(color: Colors.white)),
+        backgroundColor: Colors.redAccent,
+        centerTitle: true,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // Define responsive layout behavior
+            double width = constraints.maxWidth;
+            bool isLargeScreen =
+                width > 600; // Define breakpoint for large screens
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Book Your Ticket",
+                  style: TextStyle(
+                    fontSize: isLargeScreen ? 30 : 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Source Dropdown
+                Flexible(
+                  child: DropdownButtonFormField<String>(
+                    decoration: const InputDecoration(
+                      labelText: 'From',
+                      border: OutlineInputBorder(),
+                    ),
+                    value: _selectedSource,
+                    onChanged: (newValue) {
+                      setState(() {
+                        _selectedSource = newValue;
+                      });
+                    },
+                    items: stations.map((station) {
+                      return DropdownMenuItem(
+                        child: Text(station),
+                        value: station,
+                      );
+                    }).toList(),
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Destination Dropdown
+                Flexible(
+                  child: DropdownButtonFormField<String>(
+                    decoration: const InputDecoration(
+                      labelText: 'To',
+                      border: OutlineInputBorder(),
+                    ),
+                    value: _selectedDestination,
+                    onChanged: (newValue) {
+                      setState(() {
+                        _selectedDestination = newValue;
+                      });
+                    },
+                    items: stations.map((station) {
+                      return DropdownMenuItem(
+                        child: Text(station),
+                        value: station,
+                      );
+                    }).toList(),
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Date Picker
+                GestureDetector(
+                  onTap: () => _pickDate(context),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 15, horizontal: 10),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey),
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                    child: Text(
+                      "Date of Journey: ${DateFormat.yMMMd().format(_selectedDate)}",
+                      style: TextStyle(fontSize: isLargeScreen ? 18 : 16),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 30),
+
+                // Generate PDF Button
+                Center(
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.redAccent,
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 15, horizontal: 30),
+                      textStyle: TextStyle(
+                        fontSize: isLargeScreen ? 18 : 16,
+                      ),
+                    ),
+                    onPressed: () {
+                      if (_selectedSource != null &&
+                          _selectedDestination != null) {
+                        _generatePDF();
+                      } else {
+                        print(
+                            "Please select both source and destination stations.");
+                      }
+                    },
+                    child: const Text(
+                      "Generate PDF & Print",
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
         ),
-        pw.Padding(
-          padding: pw.EdgeInsets.all(8),
-          child: pw.Text(value, style: valueStyle),
-        ),
-      ],
+      ),
     );
   }
 }
